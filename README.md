@@ -4,14 +4,11 @@ This Streamlit dashboard provides an interactive and insightful view into the sa
 
 🚀 Features
 
-Store Area Selection: Filter all visualizations by individual store areas or view overall metrics.
-Profit & Sales Metrics:
-Total profit by area
-Units sold by pet type and location
-Revenue share by pet type
-Monthly profit trends
-Manager Insights:
-Profitability per store manager
-Manager-wise performance by pet type (bar and pie charts)
-Correlations:
-Analyze correlation between location and profit for each pet type (if Area_encoded is available)
+- Store-level filtering by location, pet, and month
+- Profit breakdowns by pet type and store manager
+- Monthly profit trend chart
+- Top-selling pet highlight
+- Efficiency metric: profit per unit sold
+- Smart recommendations based on trends
+- Manager vs pet heatmap
+- Data export (CSV)
