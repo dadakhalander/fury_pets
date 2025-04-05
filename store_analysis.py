@@ -17,10 +17,10 @@ def load_data():
     st.write("Columns in the data:", df.columns)
     
     # Check if necessary columns exist
-    if 'Managers First Name' in df.columns and 'Managers Last Name' in df.columns:
-        df['Manager Full Name'] = df['Managers First Name'] + ' ' + df['Managers Last Name']
+    if 'Managers First Name' in df.columns and 'Managers Surname' in df.columns:
+        df['Manager Full Name'] = df['Managers First Name'] + ' ' + df['Managers Surname']
     else:
-        st.error("Missing required columns: 'Managers First Name' or 'Managers Last Name'. Please check your data.")
+        st.error("Missing required columns: 'Managers First Name' or 'Managers Surname'. Please check your data.")
     
     df['Date'] = pd.to_datetime(df['Date'])
     df['Month'] = df['Date'].dt.month_name()
