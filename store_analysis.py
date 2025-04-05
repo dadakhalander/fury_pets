@@ -3,10 +3,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from io import BytesIO
 
 # Page configuration
@@ -140,54 +141,117 @@ st.download_button(
     mime='text/csv'
 )
 
-# --- Machine Learning Model (Optional) ---
+# --- Machine Learning Model ---
 st.sidebar.header("🤖 Optional: Machine Learning Prediction Model")
 
 use_ml_model = st.sidebar.checkbox("Enable Machine Learning Predictions for Future Profit")
 
 if use_ml_model:
-    st.subheader("🤖 Machine Learning Predictions for Future Profit")
+    model_type = st.radio("Choose Model", ("Basic Model", "Tuned Model"))
 
-    # Define features and target for training the model
-    features = ['Area', 'Pet', 'Units Sld', 'Manager Full Name', 'Month']
-    target = 'Profit'
+    if model_type == "Basic Model":
+        st.subheader("🤖 Basic Machine Learning Predictions for Future Profit")
 
-    # Preprocessing: OneHotEncode categorical features and handle numeric features
-    X = filtered_df[features]
-    y = filtered_df[target]
+        # Define features and target for training the model
+        features = ['Area', 'Pet', 'Units Sld', 'Manager Full Name', 'Month']
+        target = 'Profit'
 
-    # Create a column transformer for one-hot encoding categorical columns
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('cat', OneHotEncoder(), ['Area', 'Pet', 'Manager Full Name', 'Month']),
-            ('num', 'passthrough', ['Units Sld'])
+        # Preprocessing: OneHotEncode categorical features and handle numeric features
+        X = filtered_df[features]
+        y = filtered_df[target]
+
+        # Create a column transformer for one-hot encoding categorical columns
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ('cat', OneHotEncoder(), ['Area', 'Pet', 'Manager Full Name', 'Month']),
+                ('num', 'passthrough', ['Units Sld'])
+            ])
+
+        # Define RandomForest model within a pipeline
+        model = Pipeline(steps=[
+            ('preprocessor', preprocessor),
+            ('regressor', RandomForestRegressor(random_state=42))
         ])
 
-    # Define RandomForest model within a pipeline
-    model = Pipeline(steps=[
-        ('preprocessor', preprocessor),
-        ('regressor', RandomForestRegressor(n_estimators=100, random_state=42))
-    ])
+        # Train-test split (we train on historical data)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Train-test split (we train on historical data)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        # Train the model
+        model.fit(X_train, y_train)
 
-    # Train the model
-    model.fit(X_train, y_train)
+        # Predict future profits based on the input data
+        predictions = model.predict(X_test)
 
-    # Predict future profits based on the input data
-    predictions = model.predict(X_test)
+        # Display prediction results
+        st.write("### Model Prediction Results")
+        predicted_profits = pd.DataFrame({'Actual': y_test, 'Predicted': predictions})
+        st.write(predicted_profits.head())
 
-    # Display prediction results
-    st.write("### Model Prediction Results")
-    predicted_profits = pd.DataFrame({'Actual': y_test, 'Predicted': predictions})
-    st.write(predicted_profits.head())
+        # --- Visualizing the Prediction Errors ---
+        st.subheader("📊 Prediction Error Analysis")
+        fig7, ax7 = plt.subplots(figsize=(10, 5))
+        sns.regplot(x=y_test, y=predictions, ax=ax7, scatter_kws={'color': 'blue'}, line_kws={'color': 'red'})
+        ax7.set_xlabel("Actual Profit")
+        ax7.set_ylabel("Predicted Profit")
+        ax7.set_title("Actual vs Predicted Profit")
+        st.pyplot(fig7)
 
-    # --- Visualizing the Prediction Errors ---
-    st.subheader("📊 Prediction Error Analysis")
-    fig7, ax7 = plt.subplots(figsize=(10, 5))
-    sns.regplot(x=y_test, y=predictions, ax=ax7, scatter_kws={'color': 'blue'}, line_kws={'color': 'red'})
-    ax7.set_xlabel("Actual Profit")
-    ax7.set_ylabel("Predicted Profit")
-    ax7.set_title("Actual vs Predicted Profit")
-    st.pyplot(fig7)
+    if model_type == "Tuned Model":
+        st.subheader("🤖 Tuned Machine Learning Predictions for Future Profit")
+
+        # Define features and target for training the model
+        features = ['Area', 'Pet', 'Units Sld', 'Manager Full Name', 'Month']
+        target = 'Profit'
+
+        # Preprocessing: OneHotEncode categorical features and handle numeric features
+        X = filtered_df[features]
+        y = filtered_df[target]
+
+        # Create a column transformer for one-hot encoding categorical columns
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ('cat', OneHotEncoder(), ['Area', 'Pet', 'Manager Full Name', 'Month']),
+                ('num', 'passthrough', ['Units Sld'])
+            ])
+
+        # Define RandomForest model within a pipeline
+        model = Pipeline(steps=[
+            ('preprocessor', preprocessor),
+            ('regressor', RandomForestRegressor(random_state=42))
+        ])
+
+        # Hyperparameter grid for tuning
+        param_grid = {
+            'regressor__n_estimators': [50, 100, 200],
+            'regressor__max_depth': [10, 20, 30, None],
+            'regressor__min_samples_split': [2, 5, 10],
+            'regressor__min_samples_leaf': [1, 2, 4]
+        }
+
+        # Perform Grid Search for best parameters
+        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error', n_jobs=-1)
+        grid_search.fit(X, y)
+
+        # Best parameters and best model
+        st.write(f"Best Parameters: {grid_search.best_params_}")
+        best_model = grid_search.best_estimator_
+
+        # Train-test split (we train on historical data)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Predict future profits based on the input data
+        predictions = best_model.predict(X_test)
+
+        # Display prediction results
+        st.write("### Tuned Model Prediction Results")
+        predicted_profits = pd.DataFrame({'Actual': y_test, 'Predicted': predictions})
+        st.write(predicted_profits.head())
+
+        # --- Visualizing the Prediction Errors ---
+        st.subheader("📊 Tuned Model Prediction Error Analysis")
+        fig8, ax8 = plt.subplots(figsize=(10, 5))
+        sns.regplot(x=y_test, y=predictions, ax=ax8, scatter_kws={'color': 'blue'}, line_kws={'color': 'red'})
+        ax8.set_xlabel("Actual Profit")
+        ax8.set_ylabel("Predicted Profit")
+        ax8.set_title("Actual vs Predicted Profit (Tuned Model)")
+        st.pyplot(fig8)
