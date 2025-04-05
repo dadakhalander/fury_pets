@@ -194,6 +194,15 @@ if use_ml_model:
         ax7.set_xlabel("Actual Profit")
         ax7.set_ylabel("Predicted Profit")
         ax7.set_title("Actual vs Predicted Profit")
+
+        # Explanation below the graph
+        st.markdown("""
+            - **Actual Profit**: The real profit values from the test data.
+            - **Predicted Profit**: The values predicted by the machine learning model based on the training data.
+            - The red line represents the ideal prediction where the predicted value matches the actual value.
+            - The closer the points are to this red line, the better the model's predictions.
+        """)
+
         st.pyplot(fig7)
 
     if model_type == "Tuned Model":
@@ -254,4 +263,13 @@ if use_ml_model:
         ax8.set_xlabel("Actual Profit")
         ax8.set_ylabel("Predicted Profit")
         ax8.set_title("Actual vs Predicted Profit (Tuned Model)")
+
+        # Explanation below the graph
+        st.markdown("""
+            - **Actual Profit**: The real profit values from the test data.
+            - **Predicted Profit**: The values predicted by the tuned machine learning model based on the training data.
+            - The red line represents the ideal prediction where the predicted value matches the actual value.
+            - The closer the points are to this red line, the better the model's predictions.
+        """)
+
         st.pyplot(fig8)
