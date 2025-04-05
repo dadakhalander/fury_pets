@@ -3,11 +3,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from io import BytesIO
 
 # Page configuration
@@ -77,28 +76,85 @@ top_pet = pet_profit.idxmax()
 top_pet_value = pet_profit.max()
 st.success(f"🏆 Top-Selling Pet: **{top_pet}** (${top_pet_value:,.2f})")
 
-# --- Machine Learning Model for Store Prediction ---
+# --- Profit by Manager ---
+st.subheader("🧑‍💼 Profit by Manager")
+manager_profit = filtered_df.groupby('Manager Full Name')['Profit'].sum().sort_values(ascending=False)
+
+fig3, ax3 = plt.subplots(figsize=(10, 4))
+manager_profit.plot(kind='bar', color='lightcoral', edgecolor='black', ax=ax3)
+ax3.set_ylabel("Profit")
+ax3.set_title("Manager Profit Breakdown")
+plt.xticks(rotation=45)
+st.pyplot(fig3)
+
+# --- Monthly Profit Trend ---
+st.subheader("📈 Monthly Profit Trend")
+monthly_profit = filtered_df.groupby(filtered_df['Date'].dt.to_period("M"))['Profit'].sum()
+
+fig4, ax4 = plt.subplots(figsize=(10, 4))
+monthly_profit.plot(marker='o', linestyle='-', color='blue', ax=ax4)
+ax4.set_ylabel("Profit")
+ax4.set_xlabel("Month")
+ax4.set_title("Profit Over Time")
+plt.xticks(rotation=45)
+st.pyplot(fig4)
+
+# --- Profit per Unit Sold ---
+st.subheader("📦 Profit per Unit Sold")
+efficiency = filtered_df.groupby('Pet').apply(lambda x: x['Profit'].sum() / x['Units Sld'].sum())
+
+fig5, ax5 = plt.subplots(figsize=(8, 4))
+efficiency.sort_values().plot(kind='bar', color='skyblue', ax=ax5)
+ax5.set_ylabel("Profit per Unit")
+ax5.set_title("Efficiency by Pet Type")
+st.pyplot(fig5)
+
+# --- Recommendations ---
+st.subheader("📌 Smart Suggestions")
+
+if len(monthly_profit) > 1 and monthly_profit.pct_change().iloc[-1] < 0:
+    st.warning("📉 Monthly profit is declining. Consider reviewing promotions or pricing.")
+if efficiency.max() > 100 and efficiency.idxmax() != top_pet:
+    st.info(f"🔍 Consider promoting **{efficiency.idxmax()}** — it yields high profit per unit!")
+
+# --- Heatmap: Manager vs Pet Profit ---
+st.subheader("📐 Profit Heatmap: Manager vs Pet")
+heatmap_data = filtered_df.pivot_table(index='Manager Full Name', columns='Pet', values='Profit', aggfunc='sum', fill_value=0)
+
+fig6, ax6 = plt.subplots(figsize=(12, 6))
+sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="YlGnBu", ax=ax6)
+st.pyplot(fig6)
+
+# --- Data Table ---
+st.subheader("📋 Preview of Filtered Data")
+st.dataframe(filtered_df.head(50))
+
+# --- Download Button ---
+st.subheader("📥 Export Filtered Data")
+csv_data = filtered_df.to_csv(index=False).encode('utf-8')
+
+st.download_button(
+    label="Download CSV",
+    data=csv_data,
+    file_name=f"{selected_area}_filtered_data.csv",
+    mime='text/csv'
+)
+
+# --- Machine Learning Model (Optional) ---
 st.sidebar.header("🤖 Optional: Machine Learning Prediction Model")
 
 use_ml_model = st.sidebar.checkbox("Enable Machine Learning Predictions for Future Profit")
 
 if use_ml_model:
-    # Store selection for prediction
-    store_options = sorted(df['Area'].unique())
-    selected_store = st.sidebar.selectbox("Select Store for Profit Prediction", store_options)
-
-    # Filter the dataset for the selected store
-    store_df = df[df['Area'] == selected_store]
-
-    st.subheader(f"🤖 Profit Prediction for {selected_store}")
+    st.subheader("🤖 Machine Learning Predictions for Future Profit")
 
     # Define features and target for training the model
     features = ['Area', 'Pet', 'Units Sld', 'Manager Full Name', 'Month']
     target = 'Profit'
 
     # Preprocessing: OneHotEncode categorical features and handle numeric features
-    X = store_df[features]
-    y = store_df[target]
+    X = filtered_df[features]
+    y = filtered_df[target]
 
     # Create a column transformer for one-hot encoding categorical columns
     preprocessor = ColumnTransformer(
@@ -110,7 +166,7 @@ if use_ml_model:
     # Define RandomForest model within a pipeline
     model = Pipeline(steps=[
         ('preprocessor', preprocessor),
-        ('regressor', RandomForestRegressor(random_state=42))
+        ('regressor', RandomForestRegressor(n_estimators=100, random_state=42))
     ])
 
     # Train-test split (we train on historical data)
@@ -122,7 +178,7 @@ if use_ml_model:
     # Predict future profits based on the input data
     predictions = model.predict(X_test)
 
-    # Display prediction results for the selected store
+    # Display prediction results
     st.write("### Model Prediction Results")
     predicted_profits = pd.DataFrame({'Actual': y_test, 'Predicted': predictions})
     st.write(predicted_profits.head())
@@ -134,14 +190,4 @@ if use_ml_model:
     ax7.set_xlabel("Actual Profit")
     ax7.set_ylabel("Predicted Profit")
     ax7.set_title("Actual vs Predicted Profit")
-
-    # Explanation below the graph
-    st.markdown("""
-        - **Actual Profit**: The real profit values from the data.
-        - **Predicted Profit**: The values predicted by the machine learning model based on the training data.
-        - The **red line** represents the ideal prediction where the predicted value matches the actual value.
-        - The closer the points are to this **red line**, the better the model's predictions are.
-        - **Discrepancies** from the line indicate areas where the model is either overestimating or underestimating the profit.
-    """)
-
     st.pyplot(fig7)
