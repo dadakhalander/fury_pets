@@ -118,14 +118,24 @@ st.pyplot(fig6)
 # --- DATA TABLE ---
 st.subheader("📋 Preview of Filtered Data")
 st.dataframe(filtered_df[['Date', 'Area', 'Pet', 'Units Sld', 'Revenue', 'Profit', 'Manager Full Name']].head(50))
-
 # --- DOWNLOAD BUTTON ---
 st.subheader("📥 Export Filtered Data")
-csv_data = filtered_df.to_csv(index=False).encode('utf-8')
 
-st.download_button(
-    label="Download CSV",
-    data=csv_data,
-    file_name=f"{selected_area}_filtered_data.csv",
-    mime='text/csv'
-)
+# Check if filtered data is not empty
+if filtered_df.empty:
+    st.warning("No data to export. Please adjust your filters.")
+else:
+    # Ensure the data is being processed correctly
+    csv_data = filtered_df.to_csv(index=False).encode('utf-8')
+
+    # Debug: Display the first few rows of the CSV to confirm data
+    st.write("Preview of the exported data:")
+    st.write(filtered_df.head())
+
+    # Create download button for CSV export
+    st.download_button(
+        label="Download CSV",
+        data=csv_data,
+        file_name=f"{selected_area}_filtered_data.csv",  # Make sure this name is appropriate
+        mime='text/csv'
+    )
