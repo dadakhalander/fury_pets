@@ -197,10 +197,11 @@ if use_ml_model:
 
         # Explanation below the graph
         st.markdown("""
-            - **Actual Profit**: The real profit values from the  data.
+            - **Actual Profit**: The real profit values from the data.
             - **Predicted Profit**: The values predicted by the machine learning model based on the training data.
-            - The red line represents the ideal prediction where the predicted value matches the actual value.
-            - The closer the points are to this red line, the better the model's predictions.
+            - The **red line** represents the ideal prediction where the predicted value matches the actual value.
+            - The closer the points are to this **red line**, the better the model's predictions are.
+            - **Discrepancies** from the line indicate areas where the model is either overestimating or underestimating the profit.
         """)
 
         st.pyplot(fig7)
@@ -266,10 +267,11 @@ if use_ml_model:
 
         # Explanation below the graph
         st.markdown("""
-            - **Actual Profit**: The real profit values from the  data.
+            - **Actual Profit**: The real profit values from the data.
             - **Predicted Profit**: The values predicted by the tuned machine learning model based on the training data.
-            - The red line represents the ideal prediction where the predicted value matches the actual value.
-            - The closer the points are to this red line, the better the model's predictions.
+            - The **red line** represents the ideal prediction where the predicted value matches the actual value.
+            - The closer the points are to this **red line**, the better the model's predictions are.
+            - **Discrepancies** from the line indicate areas where the model is either overestimating or underestimating the profit.
         """)
 
         st.pyplot(fig8)
