@@ -2,9 +2,14 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
 from io import BytesIO
 
-# Page config
+# Page configuration
 st.set_page_config(page_title="🐾 Fury Friends Dashboard", layout="wide")
 st.title("🐾 Fury Friends Store Dashboard")
 
@@ -134,3 +139,55 @@ st.download_button(
     file_name=f"{selected_area}_filtered_data.csv",
     mime='text/csv'
 )
+
+# --- Machine Learning Model (Optional) ---
+st.sidebar.header("🤖 Optional: Machine Learning Prediction Model")
+
+use_ml_model = st.sidebar.checkbox("Enable Machine Learning Predictions for Future Profit")
+
+if use_ml_model:
+    st.subheader("🤖 Machine Learning Predictions for Future Profit")
+
+    # Define features and target for training the model
+    features = ['Area', 'Pet', 'Units Sld', 'Manager Full Name', 'Month']
+    target = 'Profit'
+
+    # Preprocessing: OneHotEncode categorical features and handle numeric features
+    X = filtered_df[features]
+    y = filtered_df[target]
+
+    # Create a column transformer for one-hot encoding categorical columns
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('cat', OneHotEncoder(), ['Area', 'Pet', 'Manager Full Name', 'Month']),
+            ('num', 'passthrough', ['Units Sld'])
+        ])
+
+    # Define RandomForest model within a pipeline
+    model = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('regressor', RandomForestRegressor(n_estimators=100, random_state=42))
+    ])
+
+    # Train-test split (we train on historical data)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Train the model
+    model.fit(X_train, y_train)
+
+    # Predict future profits based on the input data
+    predictions = model.predict(X_test)
+
+    # Display prediction results
+    st.write("### Model Prediction Results")
+    predicted_profits = pd.DataFrame({'Actual': y_test, 'Predicted': predictions})
+    st.write(predicted_profits.head())
+
+    # --- Visualizing the Prediction Errors ---
+    st.subheader("📊 Prediction Error Analysis")
+    fig7, ax7 = plt.subplots(figsize=(10, 5))
+    sns.regplot(x=y_test, y=predictions, ax=ax7, scatter_kws={'color': 'blue'}, line_kws={'color': 'red'})
+    ax7.set_xlabel("Actual Profit")
+    ax7.set_ylabel("Predicted Profit")
+    ax7.set_title("Actual vs Predicted Profit")
+    st.pyplot(fig7)
