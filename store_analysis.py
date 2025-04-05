@@ -5,10 +5,10 @@ import seaborn as sns
 from io import BytesIO
 
 # Page config
-st.set_page_config(page_title="Fury Friends Dashboard", layout="wide")
+st.set_page_config(page_title="🐾 Fury Friends Dashboard", layout="wide")
 st.title("🐾 Fury Friends Store Dashboard")
 
-# Load dataset
+# Load data
 @st.cache_data
 def load_data():
     df = pd.read_csv("new_data_3.csv")
@@ -21,14 +21,9 @@ df = load_data()
 # Sidebar filters
 st.sidebar.header("🔍 Filter Options")
 
-area_options = df['Area'].unique()
-selected_area = st.sidebar.selectbox("Select Store Location", sorted(area_options))
-
-pet_options = df['Pet'].unique()
-selected_pets = st.sidebar.multiselect("Select Pet Types", options=sorted(pet_options), default=sorted(pet_options))
-
-month_options = df['Month'].unique()
-selected_months = st.sidebar.multiselect("Select Months", options=month_options, default=month_options)
+selected_area = st.sidebar.selectbox("📍 Select Store Location", sorted(df['Area'].unique()))
+selected_pets = st.sidebar.multiselect("🐶 Select Pet Types", sorted(df['Pet'].unique()), default=sorted(df['Pet'].unique()))
+selected_months = st.sidebar.multiselect("🗓️ Select Months", sorted(df['Month'].unique()), default=sorted(df['Month'].unique()))
 
 # Filter data
 filtered_df = df[
@@ -37,23 +32,22 @@ filtered_df = df[
     (df['Month'].isin(selected_months))
 ]
 
-st.subheader(f"📍 Store Area: {selected_area}")
-st.write(f"Filters applied: Pet Types = {', '.join(selected_pets)} | Months = {', '.join(selected_months)}")
+st.subheader(f"📌 Analyzing: {selected_area}")
+st.markdown(f"**Pet Types:** {', '.join(selected_pets)} | **Months:** {', '.join(selected_months)}")
 
-# Display total profit
+# --- Metrics ---
 total_profit = filtered_df['Profit'].sum()
 st.metric(label="💰 Total Profit", value=f"${total_profit:,.2f}")
 
-# Profit by Pet Type
-st.subheader("🐕 Profit by Pet Type")
+# --- Profit by Pet Type ---
+st.subheader("📊 Profit by Pet Type")
 pet_profit = filtered_df.groupby('Pet')['Profit'].sum().sort_values(ascending=False)
 
 col1, col2 = st.columns(2)
-
 with col1:
     fig1, ax1 = plt.subplots(figsize=(6, 4))
     sns.barplot(x=pet_profit.index, y=pet_profit.values, palette='Set2', ax=ax1)
-    ax1.set_title("Profit by Pet Type")
+    ax1.set_title("Profit by Pet")
     ax1.set_ylabel("Profit")
     ax1.set_xlabel("Pet Type")
     plt.xticks(rotation=45)
@@ -66,31 +60,71 @@ with col2:
     ax2.set_title("Profit Share by Pet Type")
     st.pyplot(fig2)
 
-# Profit by Manager
-st.subheader("👨‍💼 Profit by Store Manager")
+# --- Top-Selling Pet ---
+top_pet = pet_profit.idxmax()
+top_pet_value = pet_profit.max()
+st.success(f"🏆 Top-Selling Pet: **{top_pet}** (${top_pet_value:,.2f})")
+
+# --- Profit by Manager ---
+st.subheader("🧑‍💼 Profit by Manager")
 manager_profit = filtered_df.groupby('Managers First Name')['Profit'].sum().sort_values(ascending=False)
 
-fig3, ax3 = plt.subplots(figsize=(10, 5))
+fig3, ax3 = plt.subplots(figsize=(10, 4))
 manager_profit.plot(kind='bar', color='lightcoral', edgecolor='black', ax=ax3)
-ax3.set_title("Profit by Manager")
 ax3.set_ylabel("Profit")
-ax3.set_xlabel("Manager")
+ax3.set_title("Manager Profit Breakdown")
 plt.xticks(rotation=45)
 st.pyplot(fig3)
 
-# Data table preview
-st.subheader("📋 Filtered Data Preview")
+# --- Monthly Profit Trend ---
+st.subheader("📈 Monthly Profit Trend")
+monthly_profit = filtered_df.groupby(filtered_df['Date'].dt.to_period("M"))['Profit'].sum()
+
+fig4, ax4 = plt.subplots(figsize=(10, 4))
+monthly_profit.plot(marker='o', linestyle='-', color='blue', ax=ax4)
+ax4.set_ylabel("Profit")
+ax4.set_xlabel("Month")
+ax4.set_title("Profit Over Time")
+plt.xticks(rotation=45)
+st.pyplot(fig4)
+
+# --- Profit per Unit Sold ---
+st.subheader("📦 Profit per Unit Sold")
+efficiency = filtered_df.groupby('Pet').apply(lambda x: x['Profit'].sum() / x['Units Sld'].sum())
+
+fig5, ax5 = plt.subplots(figsize=(8, 4))
+efficiency.sort_values().plot(kind='bar', color='skyblue', ax=ax5)
+ax5.set_ylabel("Profit per Unit")
+ax5.set_title("Efficiency by Pet Type")
+st.pyplot(fig5)
+
+# --- Recommendations ---
+st.subheader("📌 Smart Suggestions")
+
+if len(monthly_profit) > 1 and monthly_profit.pct_change().iloc[-1] < 0:
+    st.warning("📉 Monthly profit is declining. Consider reviewing promotions or pricing.")
+if efficiency.max() > 100 and efficiency.idxmax() != top_pet:
+    st.info(f"🔍 Consider promoting **{efficiency.idxmax()}** — it yields high profit per unit!")
+
+# --- Heatmap: Manager vs Pet Profit ---
+st.subheader("📐 Profit Heatmap: Manager vs Pet")
+heatmap_data = filtered_df.pivot_table(index='Managers First Name', columns='Pet', values='Profit', aggfunc='sum', fill_value=0)
+
+fig6, ax6 = plt.subplots(figsize=(12, 6))
+sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="YlGnBu", ax=ax6)
+st.pyplot(fig6)
+
+# --- Data Table ---
+st.subheader("📋 Preview of Filtered Data")
 st.dataframe(filtered_df.head(50))
 
-# Download filtered data
-def convert_df_to_csv(df):
-    return df.to_csv(index=False).encode('utf-8')
-
-csv_data = convert_df_to_csv(filtered_df)
+# --- Download Button ---
+st.subheader("📥 Export Filtered Data")
+csv_data = filtered_df.to_csv(index=False).encode('utf-8')
 
 st.download_button(
-    label="📥 Download Filtered Data as CSV",
+    label="Download CSV",
     data=csv_data,
-    file_name=f"filtered_data_{selected_area}.csv",
+    file_name=f"{selected_area}_filtered_data.csv",
     mime='text/csv'
 )
