@@ -14,13 +14,19 @@ def load_data():
     df = pd.read_csv("new_data_3.csv")
     df['Date'] = pd.to_datetime(df['Date'])
     df['Month'] = df['Date'].dt.month_name()
+    
+    # Add manager full name column
+    if 'Managers First Name' in df.columns and 'Managers Surname' in df.columns:
+        df['Manager Full Name'] = df['Managers First Name'] + ' ' + df['Managers Surname']
+    else:
+        st.error("Missing 'Managers First Name' or 'Managers Surname' column.")
+    
     return df
 
 df = load_data()
 
 # Sidebar filters
 st.sidebar.header("🔍 Filter Options")
-
 selected_area = st.sidebar.selectbox("📍 Select Store Location", sorted(df['Area'].unique()))
 selected_pets = st.sidebar.multiselect("🐶 Select Pet Types", sorted(df['Pet'].unique()), default=sorted(df['Pet'].unique()))
 selected_months = st.sidebar.multiselect("🗓️ Select Months", sorted(df['Month'].unique()), default=sorted(df['Month'].unique()))
@@ -67,7 +73,7 @@ st.success(f"🏆 Top-Selling Pet: **{top_pet}** (${top_pet_value:,.2f})")
 
 # --- Profit by Manager ---
 st.subheader("🧑‍💼 Profit by Manager")
-manager_profit = filtered_df.groupby('Managers First Name')['Profit'].sum().sort_values(ascending=False)
+manager_profit = filtered_df.groupby('Manager Full Name')['Profit'].sum().sort_values(ascending=False)
 
 fig3, ax3 = plt.subplots(figsize=(10, 4))
 manager_profit.plot(kind='bar', color='lightcoral', edgecolor='black', ax=ax3)
@@ -108,7 +114,7 @@ if efficiency.max() > 100 and efficiency.idxmax() != top_pet:
 
 # --- Heatmap: Manager vs Pet Profit ---
 st.subheader("📐 Profit Heatmap: Manager vs Pet")
-heatmap_data = filtered_df.pivot_table(index='Managers First Name', columns='Pet', values='Profit', aggfunc='sum', fill_value=0)
+heatmap_data = filtered_df.pivot_table(index='Manager Full Name', columns='Pet', values='Profit', aggfunc='sum', fill_value=0)
 
 fig6, ax6 = plt.subplots(figsize=(12, 6))
 sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="YlGnBu", ax=ax6)
