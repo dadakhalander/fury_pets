@@ -125,31 +125,8 @@ fig6, ax6 = plt.subplots(figsize=(12, 6))
 sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="YlGnBu", ax=ax6)
 st.pyplot(fig6)
 
-# --- Manager Comparison Dashboard ---
-if show_manager_comparison:
-    st.subheader("🆚 Manager Comparison Dashboard")
 
-    manager_comparison_df = filtered_df.groupby('Manager Full Name').agg({
-        'Profit': 'sum',
-        'Units Sld': 'sum'
-    }).reset_index()
-    manager_comparison_df['Profit per Unit'] = manager_comparison_df['Profit'] / manager_comparison_df['Units Sld']
-    manager_comparison_df = manager_comparison_df.sort_values(by='Profit', ascending=False)
 
-    st.markdown("### 📋 Manager KPI Summary")
-    st.dataframe(manager_comparison_df.style.format({
-        'Profit': '£{:.2f}',
-        'Profit per Unit': '£{:.2f}',
-        'Units Sld': '{:.0f}'
-    }))
-
-    fig8, ax8 = plt.subplots(figsize=(10, 5))
-    sns.barplot(data=manager_comparison_df, x='Manager Full Name', y='Profit', palette='coolwarm', ax=ax8)
-    ax8.set_title("Total Profit by Manager")
-    ax8.set_ylabel("Total Profit (£)")
-    ax8.set_xlabel("Manager")
-    plt.xticks(rotation=45)
-    st.pyplot(fig8)
 
 # --- Store Comparison Section ---
 st.header("📍 Store Comparison Dashboard")
@@ -170,15 +147,7 @@ ax9.set_title("Profit by Store")
 plt.xticks(rotation=45)
 st.pyplot(fig9)
 
-# Profit per Unit Sold by Area
-st.subheader("📦 Efficiency: Profit per Unit Sold by Store")
-area_efficiency = store_comparison_df.groupby('Area').apply(lambda x: x['Profit'].sum() / x['Units Sld'].sum())
 
-fig10, ax10 = plt.subplots(figsize=(10, 4))
-area_efficiency.sort_values(ascending=False).plot(kind='bar', color='lightgreen', ax=ax10)
-ax10.set_ylabel("Profit per Unit")
-ax10.set_title("Efficiency by Store")
-st.pyplot(fig10)
 
 # Store Trend
 st.subheader("📈 Monthly Profit Trend by Store")
