@@ -151,6 +151,62 @@ if show_manager_comparison:
     plt.xticks(rotation=45)
     st.pyplot(fig8)
 
+# --- Store Comparison Section ---
+st.header("📍 Store Comparison Dashboard")
+
+store_comparison_df = df[
+    (df['Pet'].isin(selected_pets)) &
+    (df['Month'].isin(selected_months))
+]
+
+# Total Profit by Area
+st.subheader("💰 Total Profit by Store Location")
+area_profit = store_comparison_df.groupby('Area')['Profit'].sum().sort_values(ascending=False)
+
+fig9, ax9 = plt.subplots(figsize=(10, 4))
+sns.barplot(x=area_profit.index, y=area_profit.values, palette='pastel', ax=ax9)
+ax9.set_ylabel("Total Profit (£)")
+ax9.set_title("Profit by Store")
+plt.xticks(rotation=45)
+st.pyplot(fig9)
+
+# Profit per Unit Sold by Area
+st.subheader("📦 Efficiency: Profit per Unit Sold by Store")
+area_efficiency = store_comparison_df.groupby('Area').apply(lambda x: x['Profit'].sum() / x['Units Sld'].sum())
+
+fig10, ax10 = plt.subplots(figsize=(10, 4))
+area_efficiency.sort_values(ascending=False).plot(kind='bar', color='lightgreen', ax=ax10)
+ax10.set_ylabel("Profit per Unit")
+ax10.set_title("Efficiency by Store")
+st.pyplot(fig10)
+
+# Store Trend
+st.subheader("📈 Monthly Profit Trend by Store")
+store_trend = store_comparison_df.copy()
+store_trend['Month_Year'] = store_trend['Date'].dt.to_period("M")
+
+fig11, ax11 = plt.subplots(figsize=(12, 5))
+for area in store_trend['Area'].unique():
+    area_data = store_trend[store_trend['Area'] == area].groupby('Month_Year')['Profit'].sum()
+    area_data.plot(ax=ax11, label=area)
+
+ax11.set_ylabel("Monthly Profit")
+ax11.set_xlabel("Month")
+ax11.set_title("Store-wise Monthly Profit Trend")
+ax11.legend(title="Store")
+st.pyplot(fig11)
+
+# Smart Insights
+st.subheader("🧠 Store Performance Insights")
+top_store = area_profit.idxmax()
+lowest_efficiency_store = area_efficiency.idxmin()
+
+st.success(f"🏆 **Top Performing Store:** {top_store} (£{area_profit.max():,.2f})")
+st.warning(f"⚠️ **Lowest Efficiency:** {lowest_efficiency_store} (Profit/Unit: £{area_efficiency.min():.2f})")
+
+if top_store != selected_area:
+    st.info(f"📌 Consider adopting best practices from **{top_store}** to improve performance in **{selected_area}**.")
+
 # --- Data Table ---
 st.subheader("📋 Preview of Filtered Data")
 st.dataframe(filtered_df.head(50))
