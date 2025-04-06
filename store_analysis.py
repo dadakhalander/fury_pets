@@ -7,7 +7,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from io import BytesIO
 
 # Page configuration
 st.set_page_config(page_title="🐾 Fury Friends Dashboard", layout="wide")
@@ -74,7 +73,7 @@ with col2:
 # --- Top-Selling Pet ---
 top_pet = pet_profit.idxmax()
 top_pet_value = pet_profit.max()
-st.success(f"🏆 Top-Selling Pet: **{top_pet}** (${top_pet_value:,.2f})")
+st.success(f"🏆 Top-Selling Pet: **{top_pet}** (£{top_pet_value:,.2f})")
 
 # --- Profit by Manager ---
 st.subheader("🧑‍💼 Profit by Manager")
@@ -125,9 +124,6 @@ fig6, ax6 = plt.subplots(figsize=(12, 6))
 sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="YlGnBu", ax=ax6)
 st.pyplot(fig6)
 
-
-
-
 # --- Store Comparison Section ---
 st.header("📍 Store Comparison Dashboard")
 
@@ -146,8 +142,6 @@ ax9.set_ylabel("Total Profit (£)")
 ax9.set_title("Profit by Store")
 plt.xticks(rotation=45)
 st.pyplot(fig9)
-
-
 
 # Store Trend
 st.subheader("📈 Monthly Profit Trend by Store")
@@ -168,13 +162,8 @@ st.pyplot(fig11)
 # Smart Insights
 st.subheader("🧠 Store Performance Insights")
 top_store = area_profit.idxmax()
-lowest_efficiency_store = area_efficiency.idxmin()
 
 st.success(f"🏆 **Top Performing Store:** {top_store} (£{area_profit.max():,.2f})")
-st.warning(f"⚠️ **Lowest Efficiency:** {lowest_efficiency_store} (Profit/Unit: £{area_efficiency.min():.2f})")
-
-if top_store != selected_area:
-    st.info(f"📌 Consider adopting best practices from **{top_store}** to improve performance in **{selected_area}**.")
 
 # --- Data Table ---
 st.subheader("📋 Preview of Filtered Data")
