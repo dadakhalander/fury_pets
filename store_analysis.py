@@ -20,7 +20,6 @@ def load_data():
     df['Date'] = pd.to_datetime(df['Date'])
     df['Month'] = df['Date'].dt.month_name()
     
-    # Add manager full name column
     if 'Managers First Name' in df.columns and 'Managers Surname' in df.columns:
         df['Manager Full Name'] = df['Managers First Name'] + ' ' + df['Managers Surname']
     else:
@@ -35,6 +34,7 @@ st.sidebar.header("🔍 Filter Options")
 selected_area = st.sidebar.selectbox("📍 Select Store Location", sorted(df['Area'].unique()))
 selected_pets = st.sidebar.multiselect("🐶 Select Pet Types", sorted(df['Pet'].unique()), default=sorted(df['Pet'].unique()))
 selected_months = st.sidebar.multiselect("🗓️ Select Months", sorted(df['Month'].unique()), default=sorted(df['Month'].unique()))
+show_manager_comparison = st.sidebar.checkbox("🧑‍💼 Show Manager Comparison", value=True)
 
 # Filter data
 filtered_df = df[
@@ -125,6 +125,32 @@ fig6, ax6 = plt.subplots(figsize=(12, 6))
 sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="YlGnBu", ax=ax6)
 st.pyplot(fig6)
 
+# --- Manager Comparison Dashboard ---
+if show_manager_comparison:
+    st.subheader("🆚 Manager Comparison Dashboard")
+
+    manager_comparison_df = filtered_df.groupby('Manager Full Name').agg({
+        'Profit': 'sum',
+        'Units Sld': 'sum'
+    }).reset_index()
+    manager_comparison_df['Profit per Unit'] = manager_comparison_df['Profit'] / manager_comparison_df['Units Sld']
+    manager_comparison_df = manager_comparison_df.sort_values(by='Profit', ascending=False)
+
+    st.markdown("### 📋 Manager KPI Summary")
+    st.dataframe(manager_comparison_df.style.format({
+        'Profit': '£{:.2f}',
+        'Profit per Unit': '£{:.2f}',
+        'Units Sld': '{:.0f}'
+    }))
+
+    fig8, ax8 = plt.subplots(figsize=(10, 5))
+    sns.barplot(data=manager_comparison_df, x='Manager Full Name', y='Profit', palette='coolwarm', ax=ax8)
+    ax8.set_title("Total Profit by Manager")
+    ax8.set_ylabel("Total Profit (£)")
+    ax8.set_xlabel("Manager")
+    plt.xticks(rotation=45)
+    st.pyplot(fig8)
+
 # --- Data Table ---
 st.subheader("📋 Preview of Filtered Data")
 st.dataframe(filtered_df.head(50))
@@ -132,7 +158,6 @@ st.dataframe(filtered_df.head(50))
 # --- Download Button ---
 st.subheader("📥 Export Filtered Data")
 csv_data = filtered_df.to_csv(index=False).encode('utf-8')
-
 st.download_button(
     label="Download CSV",
     data=csv_data,
@@ -142,49 +167,36 @@ st.download_button(
 
 # --- Machine Learning Model (Optional) ---
 st.sidebar.header("🤖 Optional: Machine Learning Prediction Model")
-
 use_ml_model = st.sidebar.checkbox("Enable Machine Learning Predictions for Future Profit")
 
 if use_ml_model:
     st.subheader("🤖 Machine Learning Predictions for Future Profit")
 
-    # Define features and target for training the model
     features = ['Area', 'Pet', 'Units Sld', 'Manager Full Name', 'Month']
     target = 'Profit'
 
-    # Preprocessing: OneHotEncode categorical features and handle numeric features
     X = filtered_df[features]
     y = filtered_df[target]
 
-    # Create a column transformer for one-hot encoding categorical columns
     preprocessor = ColumnTransformer(
         transformers=[
             ('cat', OneHotEncoder(), ['Area', 'Pet', 'Manager Full Name', 'Month']),
             ('num', 'passthrough', ['Units Sld'])
         ])
 
-    # Define RandomForest model within a pipeline
     model = Pipeline(steps=[
         ('preprocessor', preprocessor),
         ('regressor', RandomForestRegressor(n_estimators=100, random_state=42))
     ])
 
-    # Train-test split (we train on historical data)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Train the model
     model.fit(X_train, y_train)
-
-    # Predict future profits based on the input data
     predictions = model.predict(X_test)
 
-    # Display prediction results
     st.write("### Model Prediction Results")
     predicted_profits = pd.DataFrame({'Actual': y_test, 'Predicted': predictions})
     st.write(predicted_profits.head())
 
-    # --- Visualizing the Prediction Errors ---
-    st.subheader("📊 Prediction Error Analysis")
     fig7, ax7 = plt.subplots(figsize=(10, 5))
     sns.regplot(x=y_test, y=predictions, ax=ax7, scatter_kws={'color': 'blue'}, line_kws={'color': 'red'})
     ax7.set_xlabel("Actual Profit")
