@@ -48,7 +48,7 @@ st.markdown(f"**Pet Types:** {', '.join(selected_pets)} | **Months:** {', '.join
 
 # --- Metrics ---
 total_profit = filtered_df['Profit'].sum()
-st.metric(label="💰 Total Profit", value=f"${total_profit:,.2f}")
+st.metric(label="💰 Total Profit", value=f"€{total_profit:,.2f}")
 
 # --- Profit by Pet Type ---
 st.subheader("📊 Profit by Pet Type")
