@@ -72,7 +72,7 @@ pet_profit = plot_profit_by_pet(filtered_df)
 # --- Top-Selling Pet ---
 top_pet = pet_profit.idxmax()
 top_pet_value = pet_profit.max()
-st.success(f"🏆 Top-Selling Pet: **{top_pet}** (£{top_pet_value:,.2f})")
+st.success(f" Top-Selling Pet: **{top_pet}** (£{top_pet_value:,.2f})")
 
 # --- Profit by Manager ---
 st.subheader("🧑‍💼 Profit by Manager")
@@ -162,7 +162,7 @@ st.pyplot(fig11)
 st.subheader("🧠 Store Performance Insights")
 top_store = area_profit.idxmax()
 
-st.success(f"🏆 **Top Performing Store:** {top_store} (£{area_profit.max():,.2f})")
+st.success(f" **Top Performing Store:** {top_store} (£{area_profit.max():,.2f})")
 
 # --- Data Table ---
 st.subheader("📋 Preview of Filtered Data")
