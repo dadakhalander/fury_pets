@@ -2,11 +2,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
 
 # Page configuration
 st.set_page_config(page_title="🐾 Fury Friends Dashboard", layout="wide")
@@ -18,12 +13,12 @@ def load_data():
     df = pd.read_csv("new_data_3.csv")
     df['Date'] = pd.to_datetime(df['Date'])
     df['Month'] = df['Date'].dt.month_name()
-    
+
     if 'Managers First Name' in df.columns and 'Managers Surname' in df.columns:
         df['Manager Full Name'] = df['Managers First Name'] + ' ' + df['Managers Surname']
     else:
         st.error("Missing 'Managers First Name' or 'Managers Surname' column.")
-    
+
     return df
 
 df = load_data()
@@ -33,7 +28,6 @@ st.sidebar.header("🔍 Filter Options")
 selected_area = st.sidebar.selectbox("📍 Select Store Location", sorted(df['Area'].unique()))
 selected_pets = st.sidebar.multiselect("🐶 Select Pet Types", sorted(df['Pet'].unique()), default=sorted(df['Pet'].unique()))
 selected_months = st.sidebar.multiselect("🗓️ Select Months", sorted(df['Month'].unique()), default=sorted(df['Month'].unique()))
-show_manager_comparison = st.sidebar.checkbox("🧑‍💼 Show Manager Comparison", value=True)
 
 # Filter data
 filtered_df = df[
@@ -50,25 +44,30 @@ total_profit = filtered_df['Profit'].sum()
 st.metric(label="💰 Total Profit", value=f"£{total_profit:,.2f}")
 
 # --- Profit by Pet Type ---
+def plot_profit_by_pet(data):
+    pet_profit = data.groupby('Pet')['Profit'].sum().sort_values(ascending=False)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        fig1, ax1 = plt.subplots(figsize=(6, 4))
+        sns.barplot(x=pet_profit.index, y=pet_profit.values, palette='Set2', ax=ax1)
+        ax1.set_title("Profit by Pet")
+        ax1.set_ylabel("Profit")
+        ax1.set_xlabel("Pet Type")
+        plt.xticks(rotation=45)
+        st.pyplot(fig1)
+
+    with col2:
+        fig2, ax2 = plt.subplots(figsize=(6, 6))
+        pet_profit.plot(kind='pie', autopct='%1.1f%%', startangle=90, ax=ax2, colors=sns.color_palette("Set2"))
+        ax2.set_ylabel("")
+        ax2.set_title("Profit Share by Pet Type")
+        st.pyplot(fig2)
+
+    return pet_profit
+
 st.subheader("📊 Profit by Pet Type")
-pet_profit = filtered_df.groupby('Pet')['Profit'].sum().sort_values(ascending=False)
-
-col1, col2 = st.columns(2)
-with col1:
-    fig1, ax1 = plt.subplots(figsize=(6, 4))
-    sns.barplot(x=pet_profit.index, y=pet_profit.values, palette='Set2', ax=ax1)
-    ax1.set_title("Profit by Pet")
-    ax1.set_ylabel("Profit")
-    ax1.set_xlabel("Pet Type")
-    plt.xticks(rotation=45)
-    st.pyplot(fig1)
-
-with col2:
-    fig2, ax2 = plt.subplots(figsize=(6, 6))
-    pet_profit.plot(kind='pie', autopct='%1.1f%%', startangle=90, ax=ax2, colors=sns.color_palette("Set2"))
-    ax2.set_ylabel("")
-    ax2.set_title("Profit Share by Pet Type")
-    st.pyplot(fig2)
+pet_profit = plot_profit_by_pet(filtered_df)
 
 # --- Top-Selling Pet ---
 top_pet = pet_profit.idxmax()
@@ -178,42 +177,3 @@ st.download_button(
     file_name=f"{selected_area}_filtered_data.csv",
     mime='text/csv'
 )
-
-# --- Machine Learning Model (Optional) ---
-st.sidebar.header("🤖 Optional: Machine Learning Prediction Model")
-use_ml_model = st.sidebar.checkbox("Enable Machine Learning Predictions for Future Profit")
-
-if use_ml_model:
-    st.subheader("🤖 Machine Learning Predictions for Future Profit")
-
-    features = ['Area', 'Pet', 'Units Sld', 'Manager Full Name', 'Month']
-    target = 'Profit'
-
-    X = filtered_df[features]
-    y = filtered_df[target]
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('cat', OneHotEncoder(), ['Area', 'Pet', 'Manager Full Name', 'Month']),
-            ('num', 'passthrough', ['Units Sld'])
-        ])
-
-    model = Pipeline(steps=[
-        ('preprocessor', preprocessor),
-        ('regressor', RandomForestRegressor(n_estimators=100, random_state=42))
-    ])
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model.fit(X_train, y_train)
-    predictions = model.predict(X_test)
-
-    st.write("### Model Prediction Results")
-    predicted_profits = pd.DataFrame({'Actual': y_test, 'Predicted': predictions})
-    st.write(predicted_profits.head())
-
-    fig7, ax7 = plt.subplots(figsize=(10, 5))
-    sns.regplot(x=y_test, y=predictions, ax=ax7, scatter_kws={'color': 'blue'}, line_kws={'color': 'red'})
-    ax7.set_xlabel("Actual Profit")
-    ax7.set_ylabel("Predicted Profit")
-    ax7.set_title("Actual vs Predicted Profit")
-    st.pyplot(fig7)
