@@ -1,13 +1,15 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 
-# Page configuration
+# --- Page Configuration ---
 st.set_page_config(page_title="🐾 Fury Friends Dashboard", layout="wide")
 st.title("🐾 Fury Friends Store Dashboard")
 
-# Load data
+# --- Load Data ---
 @st.cache_data
 def load_data():
     df = pd.read_csv("new_data_3.csv")
@@ -15,7 +17,6 @@ def load_data():
     df = df.dropna(subset=['Date'])
     df['Month'] = df['Date'].dt.month_name()
 
-    # Handle missing manager name columns
     if {'Managers First Name', 'Managers Surname'}.issubset(df.columns):
         df['Manager Full Name'] = df['Managers First Name'] + ' ' + df['Managers Surname']
     else:
@@ -25,146 +26,148 @@ def load_data():
 
 df = load_data()
 
-# Sidebar filters
+# --- Sidebar Filters ---
 st.sidebar.header("🔍 Filter Options")
 selected_area = st.sidebar.selectbox("📍 Select Store Location", sorted(df['Area'].dropna().unique()))
 selected_pets = st.sidebar.multiselect("🐶 Select Pet Types", sorted(df['Pet'].dropna().unique()), default=sorted(df['Pet'].dropna().unique()))
 selected_months = st.sidebar.multiselect("🗓️ Select Months", sorted(df['Month'].dropna().unique()), default=sorted(df['Month'].dropna().unique()))
 
-# Filtered data
+# --- Filtered Data ---
 filtered_df = df[
     (df['Area'] == selected_area) &
     (df['Pet'].isin(selected_pets)) &
     (df['Month'].isin(selected_months))
 ]
 
-st.subheader(f"📌 Analyzing: {selected_area}")
+# --- Overview ---
+st.markdown(f"### 📌 Analyzing: **{selected_area}**")
 st.markdown(f"**Pet Types:** {', '.join(selected_pets)} | **Months:** {', '.join(selected_months)}")
 
-# --- Metrics ---
 total_profit = filtered_df['Profit'].sum()
 st.metric(label="💰 Total Profit", value=f"£{total_profit:,.2f}")
 
 # --- Profit by Pet Type ---
-st.subheader("📊 Profit by Pet Type")
-pet_profit = filtered_df.groupby('Pet')['Profit'].sum().sort_values(ascending=False)
+with st.expander("📊 Profit by Pet Type", expanded=True):
+    pet_profit = filtered_df.groupby('Pet')['Profit'].sum().sort_values(ascending=False)
 
-col1, col2 = st.columns(2)
-with col1:
-    fig1, ax1 = plt.subplots()
-    sns.barplot(x=pet_profit.index, y=pet_profit.values, palette='Set2', ax=ax1)
-    ax1.set_title("Profit by Pet")
-    ax1.set_ylabel("Profit")
-    ax1.set_xlabel("Pet Type")
-    plt.xticks(rotation=45)
-    st.pyplot(fig1)
+    col1, col2 = st.columns(2)
+    with col1:
+        fig = px.bar(pet_profit, x=pet_profit.index, y=pet_profit.values,
+                     labels={'x': 'Pet Type', 'y': 'Total Profit (£)'},
+                     title="Profit by Pet Type",
+                     color=pet_profit.index, color_discrete_sequence=px.colors.qualitative.Set2)
+        st.plotly_chart(fig, use_container_width=True)
 
-with col2:
-    fig2, ax2 = plt.subplots()
-    pet_profit.plot(kind='pie', autopct='%1.1f%%', startangle=90, ax=ax2, colors=sns.color_palette("Set2"))
-    ax2.set_ylabel("")
-    ax2.set_title("Profit Share by Pet Type")
-    st.pyplot(fig2)
+    with col2:
+        fig = px.pie(pet_profit, values=pet_profit.values, names=pet_profit.index,
+                     title='Profit Share by Pet Type',
+                     color_discrete_sequence=px.colors.qualitative.Set2)
+        st.plotly_chart(fig, use_container_width=True)
 
-# --- Top-Selling Pet ---
-if not pet_profit.empty:
-    top_pet = pet_profit.idxmax()
-    top_pet_value = pet_profit.max()
-    st.success(f"🏆 Top-Selling Pet: **{top_pet}** (£{top_pet_value:,.2f})")
+    if not pet_profit.empty:
+        top_pet = pet_profit.idxmax()
+        top_pet_value = pet_profit.max()
+        st.success(f"🏆 Top-Selling Pet: **{top_pet}** (£{top_pet_value:,.2f})")
 
 # --- Profit by Manager ---
-st.subheader("🧑‍💼 Profit by Manager")
-manager_profit = filtered_df.groupby('Manager Full Name')['Profit'].sum().sort_values(ascending=False)
-
-fig3, ax3 = plt.subplots()
-manager_profit.plot(kind='bar', color='lightcoral', edgecolor='black', ax=ax3)
-ax3.set_ylabel("Profit")
-ax3.set_title("Manager Profit Breakdown")
-plt.xticks(rotation=45)
-st.pyplot(fig3)
+with st.expander("🧑‍💼 Profit by Manager"):
+    manager_profit = filtered_df.groupby('Manager Full Name')['Profit'].sum().sort_values(ascending=False)
+    fig = px.bar(manager_profit, x=manager_profit.index, y=manager_profit.values,
+                 labels={'x': 'Manager', 'y': 'Total Profit (£)'},
+                 title="Manager Profit Breakdown",
+                 color_discrete_sequence=['indianred'])
+    fig.update_layout(xaxis_tickangle=45)
+    st.plotly_chart(fig, use_container_width=True)
 
 # --- Monthly Profit Trend ---
-st.subheader("📈 Monthly Profit Trend")
-monthly_profit = filtered_df.groupby(filtered_df['Date'].dt.to_period("M"))['Profit'].sum()
+with st.expander("📈 Monthly Profit Trend"):
+    monthly_profit = filtered_df.groupby(filtered_df['Date'].dt.to_period("M"))['Profit'].sum().sort_index()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=monthly_profit.index.astype(str),
+        y=monthly_profit.values,
+        mode='lines+markers',
+        name='Profit',
+        line=dict(color='dodgerblue')
+    ))
+    fig.update_layout(
+        title="Monthly Profit Trend",
+        xaxis_title="Month",
+        yaxis_title="Profit (£)",
+        template="plotly_white"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
-fig4, ax4 = plt.subplots()
-monthly_profit.plot(marker='o', linestyle='-', color='blue', ax=ax4)
-ax4.set_ylabel("Profit")
-ax4.set_xlabel("Month")
-ax4.set_title("Profit Over Time")
-plt.xticks(rotation=45)
-st.pyplot(fig4)
-
-# --- Profit per Unit Sold ---
-st.subheader("📦 Profit per Unit Sold")
-efficiency = filtered_df.groupby('Pet').apply(lambda x: x['Profit'].sum() / x['Units Sld'].sum())
-
-fig5, ax5 = plt.subplots()
-efficiency.sort_values().plot(kind='bar', color='skyblue', ax=ax5)
-ax5.set_ylabel("Profit per Unit")
-ax5.set_title("Efficiency by Pet Type")
-st.pyplot(fig5)
+# --- Efficiency by Pet Type ---
+with st.expander("📦 Profit per Unit Sold"):
+    efficiency = filtered_df.groupby('Pet').apply(lambda x: x['Profit'].sum() / x['Units Sld'].sum()).sort_values()
+    fig = px.bar(efficiency, x=efficiency.index, y=efficiency.values,
+                 labels={'x': 'Pet Type', 'y': 'Profit per Unit'},
+                 title="Efficiency by Pet Type",
+                 color_discrete_sequence=['skyblue'])
+    st.plotly_chart(fig, use_container_width=True)
 
 # --- Recommendations ---
-st.subheader("📌 Smart Suggestions")
+with st.expander("📌 Smart Suggestions"):
+    if len(monthly_profit) > 1 and monthly_profit.pct_change().iloc[-1] < 0:
+        st.warning("📉 Monthly profit is declining. Consider reviewing promotions or pricing.")
+    if efficiency.max() > 100 and efficiency.idxmax() != pet_profit.idxmax():
+        st.info(f"🔍 Consider promoting **{efficiency.idxmax()}** — it yields high profit per unit!")
 
-if len(monthly_profit) > 1 and monthly_profit.pct_change().iloc[-1] < 0:
-    st.warning("📉 Monthly profit is declining. Consider reviewing promotions or pricing.")
-if efficiency.max() > 100 and efficiency.idxmax() != pet_profit.idxmax():
-    st.info(f"🔍 Consider promoting **{efficiency.idxmax()}** — it yields high profit per unit!")
-
-# --- Heatmap: Manager vs Pet Profit ---
-st.subheader("📐 Profit Heatmap: Manager vs Pet")
-heatmap_data = filtered_df.pivot_table(index='Manager Full Name', columns='Pet', values='Profit', aggfunc='sum', fill_value=0)
-
-fig6, ax6 = plt.subplots(figsize=(12, 6))
-sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="YlGnBu", ax=ax6)
-st.pyplot(fig6)
+# --- Heatmap: Manager vs Pet ---
+with st.expander("📐 Heatmap: Manager vs Pet Profit"):
+    heatmap_data = filtered_df.pivot_table(index='Manager Full Name', columns='Pet', values='Profit', aggfunc='sum', fill_value=0)
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="YlGnBu", ax=ax)
+    st.pyplot(fig)
 
 # --- Store Comparison Section ---
 st.header("📍 Store Comparison Dashboard")
-store_comparison_df = df[(df['Pet'].isin(selected_pets)) & (df['Month'].isin(selected_months))]
 
-st.subheader("💰 Total Profit by Store Location")
-area_profit = store_comparison_df.groupby('Area')['Profit'].sum().sort_values(ascending=False)
+# Profit by Store
+with st.expander("💰 Profit by Store"):
+    store_comparison_df = df[(df['Pet'].isin(selected_pets)) & (df['Month'].isin(selected_months))]
+    area_profit = store_comparison_df.groupby('Area')['Profit'].sum().sort_values(ascending=False)
+    fig = px.bar(area_profit, x=area_profit.index, y=area_profit.values,
+                 labels={'x': 'Area', 'y': 'Profit (£)'},
+                 title="Total Profit by Store",
+                 color_discrete_sequence=px.colors.qualitative.Pastel)
+    st.plotly_chart(fig, use_container_width=True)
+    st.success(f"🏆 **Top Performing Store:** {area_profit.idxmax()} (£{area_profit.max():,.2f})")
 
-fig9, ax9 = plt.subplots()
-sns.barplot(x=area_profit.index, y=area_profit.values, palette='pastel', ax=ax9)
-ax9.set_ylabel("Total Profit (£)")
-ax9.set_title("Profit by Store")
-plt.xticks(rotation=45)
-st.pyplot(fig9)
+# Monthly Trend by Store
+with st.expander("📈 Monthly Profit Trend by Store"):
+    store_trend = store_comparison_df.copy()
+    store_trend['Month_Year'] = store_trend['Date'].dt.to_period("M")
+    fig = go.Figure()
 
-# Store Trend
-st.subheader("📈 Monthly Profit Trend by Store")
-store_trend = store_comparison_df.copy()
-store_trend['Month_Year'] = store_trend['Date'].dt.to_period("M")
+    for area in store_trend['Area'].dropna().unique():
+        area_data = store_trend[store_trend['Area'] == area].groupby('Month_Year')['Profit'].sum()
+        fig.add_trace(go.Scatter(
+            x=area_data.index.astype(str),
+            y=area_data.values,
+            mode='lines+markers',
+            name=area
+        ))
 
-fig11, ax11 = plt.subplots(figsize=(12, 5))
-for area in store_trend['Area'].dropna().unique():
-    area_data = store_trend[store_trend['Area'] == area].groupby('Month_Year')['Profit'].sum()
-    area_data.plot(ax=ax11, label=area)
+    fig.update_layout(
+        title="Monthly Profit Trend by Store",
+        xaxis_title="Month",
+        yaxis_title="Profit (£)",
+        hovermode="x unified",
+        template="plotly_white"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
-ax11.set_ylabel("Monthly Profit")
-ax11.set_xlabel("Month")
-ax11.set_title("Store-wise Monthly Profit Trend")
-ax11.legend(title="Store")
-st.pyplot(fig11)
-
-# Smart Insights
-st.subheader("🧠 Store Performance Insights")
-top_store = area_profit.idxmax()
-st.success(f"🏆 **Top Performing Store:** {top_store} (£{area_profit.max():,.2f})")
-
-# --- Data Table ---
-st.subheader("📋 Preview of Filtered Data")
-st.dataframe(filtered_df.head(50))
+# --- Data Preview ---
+with st.expander("📋 Preview Filtered Data"):
+    st.dataframe(filtered_df, use_container_width=True)
 
 # --- Download Button ---
 st.subheader("📥 Export Filtered Data")
 csv_data = filtered_df.to_csv(index=False).encode('utf-8')
 st.download_button(
-    label="Download CSV",
+    label="📁 Download Filtered CSV",
     data=csv_data,
     file_name=f"{selected_area}_filtered_data.csv",
     mime='text/csv'
