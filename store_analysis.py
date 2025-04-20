@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 
-# --- Page Configuration ---
+# --- Page Config ---
 st.set_page_config(page_title="🐾 Fury Friends Dashboard", layout="wide")
 st.title("🐾 Fury Friends Store Dashboard")
 
@@ -32,25 +32,26 @@ selected_area = st.sidebar.selectbox("📍 Select Store Location", sorted(df['Ar
 selected_pets = st.sidebar.multiselect("🐶 Select Pet Types", sorted(df['Pet'].dropna().unique()), default=sorted(df['Pet'].dropna().unique()))
 selected_months = st.sidebar.multiselect("🗓️ Select Months", sorted(df['Month'].dropna().unique()), default=sorted(df['Month'].dropna().unique()))
 
-# --- Filtered Data ---
+# --- Filter Data ---
 filtered_df = df[
     (df['Area'] == selected_area) &
     (df['Pet'].isin(selected_pets)) &
     (df['Month'].isin(selected_months))
 ]
 
-# --- Overview ---
+# --- Header Info ---
 st.markdown(f"### 📌 Analyzing: **{selected_area}**")
 st.markdown(f"**Pet Types:** {', '.join(selected_pets)} | **Months:** {', '.join(selected_months)}")
 
+# --- Metrics ---
 total_profit = filtered_df['Profit'].sum()
 st.metric(label="💰 Total Profit", value=f"£{total_profit:,.2f}")
 
 # --- Profit by Pet Type ---
 with st.expander("📊 Profit by Pet Type", expanded=True):
     pet_profit = filtered_df.groupby('Pet')['Profit'].sum().sort_values(ascending=False)
-
     col1, col2 = st.columns(2)
+
     with col1:
         fig = px.bar(pet_profit, x=pet_profit.index, y=pet_profit.values,
                      labels={'x': 'Pet Type', 'y': 'Total Profit (£)'},
@@ -69,7 +70,7 @@ with st.expander("📊 Profit by Pet Type", expanded=True):
         top_pet_value = pet_profit.max()
         st.success(f"🏆 Top-Selling Pet: **{top_pet}** (£{top_pet_value:,.2f})")
 
-# --- Profit by Manager ---
+# --- Manager Profit ---
 with st.expander("🧑‍💼 Profit by Manager"):
     manager_profit = filtered_df.groupby('Manager Full Name')['Profit'].sum().sort_values(ascending=False)
     fig = px.bar(manager_profit, x=manager_profit.index, y=manager_profit.values,
@@ -79,7 +80,7 @@ with st.expander("🧑‍💼 Profit by Manager"):
     fig.update_layout(xaxis_tickangle=45)
     st.plotly_chart(fig, use_container_width=True)
 
-# --- Monthly Profit Trend ---
+# --- Monthly Trend ---
 with st.expander("📈 Monthly Profit Trend"):
     monthly_profit = filtered_df.groupby(filtered_df['Date'].dt.to_period("M"))['Profit'].sum().sort_index()
     fig = go.Figure()
@@ -98,7 +99,7 @@ with st.expander("📈 Monthly Profit Trend"):
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# --- Efficiency by Pet Type ---
+# --- Efficiency by Pet ---
 with st.expander("📦 Profit per Unit Sold"):
     efficiency = filtered_df.groupby('Pet').apply(lambda x: x['Profit'].sum() / x['Units Sld'].sum()).sort_values()
     fig = px.bar(efficiency, x=efficiency.index, y=efficiency.values,
@@ -121,10 +122,9 @@ with st.expander("📐 Heatmap: Manager vs Pet Profit"):
     sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="YlGnBu", ax=ax)
     st.pyplot(fig)
 
-# --- Store Comparison Section ---
+# --- Store Comparison ---
 st.header("📍 Store Comparison Dashboard")
 
-# Profit by Store
 with st.expander("💰 Profit by Store"):
     store_comparison_df = df[(df['Pet'].isin(selected_pets)) & (df['Month'].isin(selected_months))]
     area_profit = store_comparison_df.groupby('Area')['Profit'].sum().sort_values(ascending=False)
@@ -135,7 +135,6 @@ with st.expander("💰 Profit by Store"):
     st.plotly_chart(fig, use_container_width=True)
     st.success(f"🏆 **Top Performing Store:** {area_profit.idxmax()} (£{area_profit.max():,.2f})")
 
-# Monthly Trend by Store
 with st.expander("📈 Monthly Profit Trend by Store"):
     store_trend = store_comparison_df.copy()
     store_trend['Month_Year'] = store_trend['Date'].dt.to_period("M")
@@ -159,11 +158,30 @@ with st.expander("📈 Monthly Profit Trend by Store"):
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# --- Data Preview ---
+# --- 🗺️ Store Location Map ---
+with st.expander("🗺️ Store Location Map"):
+    map_df = df.dropna(subset=['lat', 'long'])
+    fig = px.scatter_mapbox(
+        map_df,
+        lat="lat",
+        lon="long",
+        color="Profit",
+        size="Profit",
+        hover_name="Area",
+        hover_data=["Pet", "Profit"],
+        zoom=4,
+        height=500,
+        title="Store Locations Colored by Profit",
+        color_continuous_scale="Viridis"
+    )
+    fig.update_layout(mapbox_style="open-street-map")
+    st.plotly_chart(fig, use_container_width=True)
+
+# --- Data Table Preview ---
 with st.expander("📋 Preview Filtered Data"):
     st.dataframe(filtered_df, use_container_width=True)
 
-# --- Download Button ---
+# --- Download Data ---
 st.subheader("📥 Export Filtered Data")
 csv_data = filtered_df.to_csv(index=False).encode('utf-8')
 st.download_button(
